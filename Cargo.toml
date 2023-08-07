@@ -16,3 +16,14 @@ panic-halt = "0.2.0"
 [dependencies.stm32f1xx-hal]
 version = "0.10.0"
 features = ["rt", "stm32f103", "medium"]
+
+# default runner starts a GDB session, which requires OpenOCD to be running
+# eg. openocd -f interface/stlink-v2-1.cfg -f target/stm32f1x.cfg
+[target.thumbv7m-none-eabi]
+runner = "gdb-multiarch -q -x ./openocd.gdb"
+rustflags = [
+    "-C", "link-arg=-Tlink.x",
+]
+
+[build]
+target = "thumbv7m-none-eabi"
