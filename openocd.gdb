@@ -1,6 +1,9 @@
 # Connect to gdb remote server
 target remote :3333
 
+# Turn on semihosting
+monitor arm semihosting enable
+
 # Load will flash the code
 load
 

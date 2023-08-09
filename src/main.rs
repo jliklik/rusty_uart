@@ -4,7 +4,9 @@
 #![no_main]
 
 use cortex_m_rt::entry;
+use cortex_m_semihosting::hprintln;
 use panic_halt as _;
+use cortex_m::{asm::bkpt, iprint, iprintln, peripheral::ITM};
 use stm32f1xx_hal::{
     pac::{self}, 
     prelude::*,
@@ -13,6 +15,12 @@ use stm32f1xx_hal::{
 
 #[entry]
 fn main() -> ! {
+
+    // let p = cortex_m::Peripherals::take().unwrap();
+    // let mut itm = p.ITM;
+    // iprintln!(&mut itm.stim[0], "Hello, world!");
+    hprintln!("The quick brown fox jumps over the lazy dog");
+
     let dp = pac::Peripherals::take().unwrap();
     let mut flash = dp.FLASH.constrain();
     let rcc = dp.RCC.constrain();
