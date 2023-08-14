@@ -8,7 +8,7 @@ use cortex_m_semihosting::hprintln;
 use panic_halt as _;
 use cortex_m::{asm::bkpt, iprint, iprintln, peripheral::ITM};
 use stm32f1xx_hal::{
-    pac::{self}, 
+    pac::{self, USART1}, 
     prelude::*,
     serial::{Config, Serial}
 }; // STM32F1 hardware abstraction layer crate
@@ -32,12 +32,20 @@ fn main() -> ! {
     // https://docs.rs/stm32f1xx-hal/latest/src/stm32f1xx_hal/gpio.rs.html#1-1206
     // pass in the control register, and get back the pin
     let pin_tx = gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh);
-    let pin_rx = gpioa.pa10;
+    // TX should be alternate push pull since it can be driven by the alternate function output, not from output which comes from
+    // output data register. Only outputs are set to push pull
+    let pin_rx = gpioa.pa10; // have to use pa10 for UART1 because it is linked to RNXE bit and UART1 registers
 
-    let serial = Serial::new(
+    // If we were not using a HAL, we would have to
+    // 1) Enable UART by setting UE bit
+    // 2) Manually program number of stop bits
+    // 3) Set desired baud rate
+    // 4) Set RE bit USART_CR1
+    // 5) When character received, RXNE bit is set
+    let _serial = Serial::new( // Serial uses Generics
         dp.USART1,
         (pin_tx, pin_rx),
-        &mut afio.mapr,
+        &mut afio.mapr, // alternate function map
         Config::default()
             .baudrate(9600.bps())
             .wordlength_9bits()
@@ -45,12 +53,22 @@ fn main() -> ! {
         &clocks,
     );
 
+    let usart1: &mut USART1 = unsafe { &mut *(USART1::ptr() as *mut _) };
     // Separate into tx and rx channels
-    let (mut tx, mut rx) = serial.split();
+    //let (mut tx, mut rx) = serial.split();
+
+    hprintln!("Entering loop!");
 
     loop {
-        let received = (rx.read_u16()).unwrap();
-        tx.write_u16(received).unwrap();
+        // hprintln!("Inside loop!");
+        //let received = (rx.read_u16()).unwrap(); // this blocks
+        //tx.write_u16(received).unwrap();
+
+        while usart1.sr.read().rxne().bit_is_clear() {}
+        let byte = usart1.dr.read().dr().bits() as u8;
+
+        hprintln!("Received: {}", byte);
+        
     }
 
 }
