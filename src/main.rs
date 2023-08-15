@@ -3,10 +3,11 @@
 #![no_std]
 #![no_main]
 
+use nb::block;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
 use panic_halt as _;
-use cortex_m::{asm::bkpt, iprint, iprintln, peripheral::ITM};
+use cortex_m::asm;
 use stm32f1xx_hal::{
     pac::{self, USART1}, 
     prelude::*,
@@ -42,7 +43,7 @@ fn main() -> ! {
     // 3) Set desired baud rate
     // 4) Set RE bit USART_CR1
     // 5) When character received, RXNE bit is set
-    let _serial = Serial::new( // Serial uses Generics
+    let mut serial = Serial::new( // Serial uses Generics
         dp.USART1,
         (pin_tx, pin_rx),
         &mut afio.mapr, // alternate function map
@@ -53,19 +54,35 @@ fn main() -> ! {
         &clocks,
     );
 
-    let usart1: &mut USART1 = unsafe { &mut *(USART1::ptr() as *mut _) };
+    //let usart1: &mut USART1 = unsafe { &mut *(USART1::ptr() as *mut _) };
     // Separate into tx and rx channels
     //let (mut tx, mut rx) = serial.split();
 
     hprintln!("Entering loop!");
+
+    let sent = b'X';
+    block!(serial.tx.write(sent)).unwrap();
+
+    // Read the byte that was just sent. Blocks until the read is complete
+    let received = block!(serial.rx.read()).unwrap();
+
+    // Since we have connected tx and rx, the byte we sent should be the one we received
+    assert_eq!(received, sent);
+    hprintln!("Sent: {}", sent);
+    hprintln!("Received: {}", received);
+
+    // Trigger a breakpoint to allow us to inspect the values
+    asm::bkpt();
 
     loop {
         // hprintln!("Inside loop!");
         //let received = (rx.read_u16()).unwrap(); // this blocks
         //tx.write_u16(received).unwrap();
 
-        while usart1.sr.read().rxne().bit_is_clear() {}
-        let byte = usart1.dr.read().dr().bits() as u8;
+        // while usart1.sr.read().rxne().bit_is_clear() {}
+        // let byte = usart1.dr.read().dr().bits() as u8;
+
+        let byte = block!(serial.rx.read()).unwrap();
 
         hprintln!("Received: {}", byte);
         
