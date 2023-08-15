@@ -48,9 +48,9 @@ fn main() -> ! {
         (pin_tx, pin_rx),
         &mut afio.mapr, // alternate function map
         Config::default()
-            .baudrate(9600.bps())
-            .wordlength_9bits()
-            .parity_none(),
+            .baudrate(9600.bps()),
+            // .wordlength_9bits()
+            // .parity_none(),
         &clocks,
     );
 
