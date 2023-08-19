@@ -9,7 +9,7 @@ use cortex_m_semihosting::hprintln;
 use panic_halt as _;
 // use cortex_m::asm;
 use stm32f1xx_hal::{
-    pac::{self, USART1}, 
+    pac::{self, rcc::RegisterBlock}, 
     gpio::{Pin,Alternate},
     prelude::*,
     serial::{Config, Serial}
@@ -32,8 +32,17 @@ fn main() -> ! {
     let rcc = dp.RCC.constrain();
     let clocks = rcc.cfgr.freeze(&mut flash.acr);
     let mut afio = dp.AFIO.constrain();
-    let mut gpioa = dp.GPIOA.split();    
     
+    // Get GPIO
+    let mut gpioa = dp.GPIOA.split(); 
+    let mut gpiob = dp.GPIOB.split();
+
+    // Set up pin 13 as LED pin
+    let mut pin13 = gpiob.pb13.into_push_pull_output(&mut gpiob.crh);
+    // Manually set up 
+    // Enable clock to GPIOB
+    //rcc.apb2enr.write(|w| w.iopben().set_bit());
+
     // Choose which AF using this: eg for alternate function 7: let rx_pin = gpioa.pa10.into_alternate::<7>();
     // https://docs.rs/stm32f1xx-hal/latest/src/stm32f1xx_hal/gpio.rs.html#1-1206
     // pass in the control register, and get back the pin
@@ -60,6 +69,16 @@ fn main() -> ! {
         // echo
         let received = block!(serial.rx.read()).unwrap();
         hprintln!("Received: {}", received);
+
+        match received {
+            b'a' => {
+                hprintln!("a");
+                pin13.set_high();
+            }
+            b'b' => pin13.set_low(),
+            _ => () // do nothing
+        }
+
         block!(serial.tx.write(received)).unwrap();
     }
 
